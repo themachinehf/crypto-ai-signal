@@ -1,0 +1,13 @@
+{
+  "name": "crypto-ai-signal",
+  "version": "2.0.0",
+  "description": "Crypto AI Signal - AI Prediction Market",
+  "main": "api/signal.js",
+  "scripts": {
+    "dev": "node api/signal.js",
+    "deploy": "vercel --prod"
+  },
+  "dependencies": {
+    "axios": "^1.6.0"
+  }
+}
