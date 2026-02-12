@@ -5,6 +5,7 @@
   "main": "api/signal.js",
   "scripts": {
     "dev": "node api/signal.js",
+    "build": "echo 'Build complete'",
     "deploy": "vercel --prod"
   },
   "dependencies": {
