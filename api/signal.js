@@ -1,101 +1,48 @@
-// Crypto AI Signal v2.0 - Prediction Engine API
+// Crypto AI Signal v2.0 - Prediction Engine API (SIMULATION MODE)
 // Vercel Serverless Function
 
-const axios = require('axios');
-
-// Configuration
+// Force simulation mode - no external API calls
 const CONFIG = {
-  // Symbols to predict
   symbols: ['BTC', 'ETH', 'SOL'],
-  // Prediction timeframes
   timeframes: ['30m', '1h', '24h'],
-  // Confidence threshold for signals
   CONFIDENCE_THRESHOLD: 0.70,
-  // MiniMax API
-  MINIMAX_ENDPOINT: 'https://api.minimax.chat/v1/text/chatcompletion_v2',
-  MINIMAX_MODEL: 'MiniMax-M2.1',
-  // Binance API
-  BINANCE_BASE: 'https://api.binance.com/api/v3',
-  // Storage file
+  SIMULATION_MODE: true, // Force simulation mode
   STORAGE_FILE: '/tmp/signal_history.json'
 };
 
-// Get market data from Binance
-async function getMarketData(symbol) {
-  try {
-    const [ticker, klines] = await Promise.all([
-      axios.get(`${CONFIG.BINANCE_BASE}/ticker/24hr?symbol=${symbol}USDT`),
-      axios.get(`${CONFIG.BINANCE_BASE}/klines?symbol=${symbol}USDT&interval=1h&limit=24`)
-    ]);
-
-    return {
-      price: parseFloat(ticker.data.lastPrice),
-      change24h: parseFloat(ticker.data.priceChangePercent),
-      volume: parseFloat(ticker.data.quoteVolume),
-      high24h: parseFloat(ticker.data.highPrice),
-      low24h: parseFloat(ticker.data.lowPrice),
-      priceHistory: klines.data.map(k => parseFloat(k[4])) // Close prices
-    };
-  } catch (error) {
-    console.error(`Error fetching ${symbol}:`, error.message);
-    return null;
+// Get market data - SIMULATION MODE
+function getMarketData(symbol) {
+  // Generate realistic simulated data
+  const basePrices = {
+    'BTC': 97500 + Math.random() * 2000 - 1000,
+    'ETH': 3485 + Math.random() * 100 - 50,
+    'SOL': 238 + Math.random() * 10 - 5
+  };
+  
+  const basePrice = basePrices[symbol];
+  
+  // Generate realistic price history
+  const priceHistory = [];
+  let currentPrice = basePrice * 0.98;
+  for (let i = 0; i < 24; i++) {
+    currentPrice = currentPrice * (1 + (Math.random() * 0.02 - 0.01));
+    priceHistory.push(currentPrice);
   }
+  
+  return {
+    price: basePrice,
+    change24h: (Math.random() * 4 - 2),
+    volume: Math.random() * 10000000000,
+    high24h: basePrice * 1.02,
+    low24h: basePrice * 0.98,
+    priceHistory: priceHistory
+  };
 }
 
-// Generate AI prediction using MiniMax
+// Generate AI prediction using simulation
 async function generatePrediction(symbol, data) {
-  const prompt = `你是 THE MACHINE，一个专注于加密货币预测的 AI 系统。
-
-## 任务
-分析以下 ${symbol} 市场数据，生成 30分钟、1小时、24小时 的价格走势预测。
-
-## 市场数据
-- 当前价格: $${data.price.toLocaleString()}
-- 24小时涨跌: ${data.change24h.toFixed(2)}%
-- 24小时最高: $${data.high24h.toLocaleString()}
-- 24小时最低: $${data.low24h.toLocaleString()}
-- 近期价格趋势: ${data.priceHistory.slice(-6).map((p, i, arr) => 
-    p > arr[0] ? '📈' : p < arr[0] ? '📉' : '➡️').join('')}
-
-## 输出要求
-请用 JSON 格式返回以下结构（只需要 JSON，不要其他文字）：
-
-{
-  "symbol": "${symbol}",
-  "predictions": {
-    "30m": {
-      "direction": "UP|DOWN|SIDEWAYS",
-      "probability": 0.XX,
-      "target_price": $XX.XX,
-      "stop_loss": $XX.XX,
-      "confidence": 0.XX
-    },
-    "1h": {
-      "direction": "UP|DOWN|SIDEWAYS",
-      "probability": 0.XX,
-      "target_price": $XX.XX,
-      "stop_loss": $XX.XX,
-      "confidence": 0.XX
-    },
-    "24h": {
-      "direction": "UP|DOWN|SIDEWAYS",
-      "probability": 0.XX,
-      "target_price": $XX.XX,
-      "stop_loss": $XX.XX,
-      "confidence": 0.XX
-    }
-  },
-  "market_sentiment": "BULLISH|BEARISH|NEUTRAL",
-  "key_factors": ["因素1", "因素2", "因素3"]
-}`;
-
-  try {
-    // For now, use rule-based prediction (MiniMax API requires key)
-    return ruleBasedPrediction(symbol, data);
-  } catch (error) {
-    console.error('Prediction error:', error);
-    return null;
-  }
+  // Always use rule-based simulation
+  return ruleBasedPrediction(symbol, data);
 }
 
 // Rule-based prediction (fallback when API unavailable)
@@ -217,13 +164,13 @@ module.exports = async (req, res) => {
   
   try {
     if (action === 'predict') {
-      // Generate predictions for all symbols
+      // Generate predictions for all symbols (synchronous in simulation mode)
       const results = {};
       
       for (const symbol of CONFIG.symbols) {
-        const data = await getMarketData(symbol);
+        const data = getMarketData(symbol);
         if (data) {
-          const prediction = await generatePrediction(symbol, data);
+          const prediction = generatePrediction(symbol, data);
           if (prediction) {
             results[symbol] = prediction;
           }
@@ -233,11 +180,12 @@ module.exports = async (req, res) => {
       res.json({
         success: true,
         timestamp: new Date().toISOString(),
+        mode: 'simulation',
         predictions: results,
         metadata: {
           confidence_threshold: CONFIG.CONFIDENCE_THRESHOLD,
-          model: 'MiniMax-M2.1',
-          fallback: 'rule-based'
+          model: 'SIMULATION',
+          disclaimer: 'This is a simulation for demo purposes only. Not financial advice.'
         }
       });
       
